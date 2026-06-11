@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h2>Panel de Devolución de Herramientas</h2>
+<p style="color:#555;margin-bottom:20px;">
+  Escanea o escribe el código de barras de la herramienta para buscar el préstamo activo y registrar su devolución.
+</p>
+{{ scanner_html }}
+<p style="margin-top:24px;">
+  <a href="{% url 'admin:prestamos_prestamo_changelist' %}" style="color:#417690;">&larr; Volver a la lista de préstamos</a>
+</p>
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<style>
+  .dev-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    max-width: 700px;
+  }
+  .dev-card h3 {
+    margin: 0 0 12px 0;
+    color: #417690;
+    font-size: 16px;
+  }
+  .dev-info-grid {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 6px 12px;
+    font-size: 13px;
+  }
+  .dev-info-grid strong { color: #333; }
+
+  /* Tabla de herramientas */
+  #tabla-herramientas {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  #tabla-herramientas th {
+    background: #417690;
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  #tabla-herramientas td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e9ecef;
+  }
+  .estado-pendiente { color: #e67e22; font-weight: bold; }
+  .estado-escaneado { color: #27ae60; font-weight: bold; }
+
+  /* Escáner */
+  #scan-wrap {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  #scan-input {
+    padding: 10px 14px;
+    border: 2px solid #c0392b;
+    border-radius: 5px;
+    font-size: 15px;
+    width: 320px;
+  }
+  #scan-btn {
+    padding: 10px 18px;
+    background: #c0392b;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #scan-msg {
+    font-size: 13px;
+    min-height: 20px;
+    margin-bottom: 10px;
+  }
+
+  /* Botón confirmar */
+  #btn-confirmar {
+    padding: 12px 28px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  #btn-confirmar.activo {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #progreso {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 12px;
+  }
+</style>
+
+<h2>{{ title }}</h2>
+
+<!-- Info del préstamo -->
+<div class="dev-card">
+  <h3>Información del préstamo</h3>
+  <div class="dev-info-grid">
+    <strong>Folio:</strong>         <span>#{{ prestamo.pk }}</span>
+    <strong>Solicitantes:</strong>  <span>{{ solicitantes }}</span>
+    <strong>Responsable:</strong>   <span>{{ responsable }}</span>
+    <strong>Lugar de uso:</strong>  <span>{{ prestamo.lugar_uso|default:"—" }}</span>
+    <strong>Fecha préstamo:</strong><span>{{ prestamo.fecha_prestamo|date:"d/m/Y H:i" }}</span>
+    <strong>Dev. esperada:</strong> <span>{{ prestamo.fecha_devolucion_esperada|date:"d/m/Y" }}</span>
+  </div>
+</div>
+
+<!-- Tabla de herramientas -->
+<div class="dev-card">
+  <h3>Herramientas a devolver</h3>
+  <table id="tabla-herramientas">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nombre</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-herramientas"></tbody>
+  </table>
+  <div id="progreso"></div>
+
+  <!-- Escáner -->
+  <div id="scan-wrap">
+    <input id="scan-input" type="text" placeholder="Escanea el código de barras de la herramienta" autofocus />
+    <button id="scan-btn" type="button">Confirmar</button>
+  </div>
+  <div id="scan-msg"></div>
+
+  <!-- Formulario de confirmación final -->
+  <form method="post" action="{{ confirmar_url }}" id="form-confirmar">
+    {% csrf_token %}
+    <button type="submit" id="btn-confirmar">
+      Registrar devolución completa
+    </button>
+  </form>
+</div>
+
+<p>
+  <a href="{{ lista_url }}" style="color:#417690;">&larr; Volver a la lista de préstamos</a>
+</p>
+
+<script>
+(function(){
+  var herramientas = {{ herramientas_json|safe }};
+  // mapa codigo → {id, nombre, escaneado}
+  var mapa = {};
+  herramientas.forEach(function(h){
+    mapa[h.codigo] = { id: h.id, nombre: h.nombre, escaneado: false };
+  });
+
+  function renderTabla(){
+    var tbody = document.getElementById('tbody-herramientas');
+    tbody.innerHTML = '';
+    herramientas.forEach(function(h){
+      var item = mapa[h.codigo];
+      var tr = document.createElement('tr');
+      tr.id = 'fila-' + h.id;
+      if(item.escaneado) tr.style.background = '#f0fff4';
+      tr.innerHTML =
+        '<td><code>' + h.codigo + '</code></td>' +
+        '<td>' + h.nombre + '</td>' +
+        '<td class="' + (item.escaneado ? 'estado-escaneado' : 'estado-pendiente') + '">' +
+          (item.escaneado ? '&#10003; Escaneada' : '&#9675; Pendiente') +
+        '</td>';
+      tbody.appendChild(tr);
+    });
+    actualizarProgreso();
+  }
+
+  function actualizarProgreso(){
+    var total = herramientas.length;
+    var listas = herramientas.filter(function(h){ return mapa[h.codigo].escaneado; }).length;
+    document.getElementById('progreso').textContent =
+      listas + ' de ' + total + ' herramienta(s) confirmada(s)';
+    var btn = document.getElementById('btn-confirmar');
+    if(listas === total){
+      btn.classList.add('activo');
+    } else {
+      btn.classList.remove('activo');
+    }
+  }
+
+  function escanear(){
+    var input = document.getElementById('scan-input');
+    var msg   = document.getElementById('scan-msg');
+    var codigo = input.value.trim();
+    if(!codigo) return;
+    input.value = '';
+
+    if(!(codigo in mapa)){
+      msg.style.color = 'red';
+      msg.textContent = '\u274C El código "' + codigo + '" no pertenece a este préstamo.';
+      input.focus();
+      return;
+    }
+    if(mapa[codigo].escaneado){
+      msg.style.color = '#e67e22';
+      msg.textContent = '\u26A0\uFE0F "' + mapa[codigo].nombre + '" ya fue escaneada.';
+      input.focus();
+      return;
+    }
+    mapa[codigo].escaneado = true;
+    renderTabla();
+    msg.style.color = 'green';
+    msg.textContent = '\u2705 ' + mapa[codigo].nombre + ' confirmada.';
+    input.focus();
+  }
+
+  document.getElementById('scan-btn').addEventListener('click', escanear);
+  document.getElementById('scan-input').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); escanear(); }
+  });
+
+  document.getElementById('form-confirmar').addEventListener('submit', function(e){
+    var total = herramientas.length;
+    var listas = herramientas.filter(function(h){ return mapa[h.codigo].escaneado; }).length;
+    if(listas < total){
+      e.preventDefault();
+      alert('Faltan ' + (total - listas) + ' herramienta(s) por escanear.');
+    }
+  });
+
+  renderTabla();
+  document.getElementById('scan-input').focus();
+})();
+</script>
+{% endblock %}
