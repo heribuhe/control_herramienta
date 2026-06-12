@@ -15,7 +15,7 @@ class HerramientaAdmin(admin.ModelAdmin):
     list_display = ("codigo", "nombre", "categoria", "estado", "ubicacion", "ver_codigo_barras")
     list_filter = ("estado", "categoria")
     search_fields = ("codigo", "nombre")
-    readonly_fields = ("token", "ver_codigo_barras_detalle")
+    readonly_fields = ("ver_codigo_barras_detalle",)
 
     def ver_codigo_barras(self, obj):
         url = f"/api/herramientas/{obj.pk}/barcode/"

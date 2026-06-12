@@ -117,7 +117,6 @@
   <table id="tabla-herramientas">
     <thead>
       <tr>
-        <th>Código</th>
         <th>Nombre</th>
         <th>Estado</th>
       </tr>
@@ -128,7 +127,7 @@
 
   <!-- Escáner -->
   <div id="scan-wrap">
-    <input id="scan-input" type="text" placeholder="Escanea el código de barras de la herramienta" autofocus />
+    <input id="scan-input" type="password" placeholder="Escanea el código de barras de la herramienta" autofocus autocomplete="off" />
     <button id="scan-btn" type="button">Confirmar</button>
   </div>
   <div id="scan-msg"></div>
@@ -149,22 +148,21 @@
 <script>
 (function(){
   var herramientas = {{ herramientas_json|safe }};
-  // mapa codigo → {id, nombre, escaneado}
+  // mapa id → {codigo, nombre, escaneado}
   var mapa = {};
   herramientas.forEach(function(h){
-    mapa[h.codigo] = { id: h.id, nombre: h.nombre, escaneado: false };
+    mapa[String(h.id)] = { codigo: h.codigo, nombre: h.nombre, escaneado: false };
   });
 
   function renderTabla(){
     var tbody = document.getElementById('tbody-herramientas');
     tbody.innerHTML = '';
     herramientas.forEach(function(h){
-      var item = mapa[h.codigo];
+      var item = mapa[String(h.id)];
       var tr = document.createElement('tr');
       tr.id = 'fila-' + h.id;
       if(item.escaneado) tr.style.background = '#f0fff4';
       tr.innerHTML =
-        '<td><code>' + h.codigo + '</code></td>' +
         '<td>' + h.nombre + '</td>' +
         '<td class="' + (item.escaneado ? 'estado-escaneado' : 'estado-pendiente') + '">' +
           (item.escaneado ? '&#10003; Escaneada' : '&#9675; Pendiente') +
@@ -176,7 +174,7 @@
 
   function actualizarProgreso(){
     var total = herramientas.length;
-    var listas = herramientas.filter(function(h){ return mapa[h.codigo].escaneado; }).length;
+    var listas = herramientas.filter(function(h){ return mapa[String(h.id)].escaneado; }).length;
     document.getElementById('progreso').textContent =
       listas + ' de ' + total + ' herramienta(s) confirmada(s)';
     var btn = document.getElementById('btn-confirmar');
@@ -190,26 +188,26 @@
   function escanear(){
     var input = document.getElementById('scan-input');
     var msg   = document.getElementById('scan-msg');
-    var codigo = input.value.trim();
-    if(!codigo) return;
+    var val = input.value.trim();
+    if(!val) return;
     input.value = '';
 
-    if(!(codigo in mapa)){
+    if(!(val in mapa)){
       msg.style.color = 'red';
-      msg.textContent = '\u274C El código "' + codigo + '" no pertenece a este préstamo.';
+      msg.textContent = '\u274C El código no pertenece a este préstamo.';
       input.focus();
       return;
     }
-    if(mapa[codigo].escaneado){
+    if(mapa[val].escaneado){
       msg.style.color = '#e67e22';
-      msg.textContent = '\u26A0\uFE0F "' + mapa[codigo].nombre + '" ya fue escaneada.';
+      msg.textContent = '\u26A0\uFE0F "' + mapa[val].nombre + '" ya fue escaneada.';
       input.focus();
       return;
     }
-    mapa[codigo].escaneado = true;
+    mapa[val].escaneado = true;
     renderTabla();
     msg.style.color = 'green';
-    msg.textContent = '\u2705 ' + mapa[codigo].nombre + ' confirmada.';
+    msg.textContent = '\u2705 ' + mapa[val].nombre + ' confirmada.';
     input.focus();
   }
 
@@ -220,7 +218,7 @@
 
   document.getElementById('form-confirmar').addEventListener('submit', function(e){
     var total = herramientas.length;
-    var listas = herramientas.filter(function(h){ return mapa[h.codigo].escaneado; }).length;
+    var listas = herramientas.filter(function(h){ return mapa[String(h.id)].escaneado; }).length;
     if(listas < total){
       e.preventDefault();
       alert('Faltan ' + (total - listas) + ' herramienta(s) por escanear.');

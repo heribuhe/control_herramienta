@@ -35,7 +35,7 @@ SCANNER_PRESTAMO_HTML = """
     var codigo = document.getElementById('scanner-input').value.trim();
     var msg    = document.getElementById('scanner-msg');
     if(!codigo) return;
-    fetch('/api/herramientas/por_token/?token=' + encodeURIComponent(codigo) + '&format=json', {
+    fetch('/api/herramientas/' + encodeURIComponent(codigo) + '/?format=json', {
       headers: {'X-Requested-With': 'XMLHttpRequest'}
     })
     .then(function(r){

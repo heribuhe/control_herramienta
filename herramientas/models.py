@@ -1,4 +1,3 @@
-import uuid
 from django.db import models
 
 
@@ -20,7 +19,6 @@ class Herramienta(models.Model):
         BAJA = "baja", "Dada de baja"
 
     codigo = models.CharField(max_length=50, unique=True)
-    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     nombre = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True)
     categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, related_name="herramientas")

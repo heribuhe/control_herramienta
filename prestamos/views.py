@@ -12,25 +12,13 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-import uuid
-
 from herramientas.models import Herramienta
 from .models import Prestamo
 from .serializers import PrestamoSerializer
 
 
 def _buscar_herramienta_por_valor(valor):
-    """
-    Busca una herramienta por token (hex sin guiones, como lo emite el escáner)
-    o por código legible como fallback.
-    """
-    # Intentar como UUID / token
-    try:
-        token = uuid.UUID(valor)          # acepta "abc123..." con o sin guiones
-        return Herramienta.objects.filter(token=token).first()
-    except (ValueError, AttributeError):
-        pass
-    # Fallback: código legible
+    """Busca una herramienta por su código."""
     return Herramienta.objects.filter(codigo=valor).first()
 
 
@@ -76,12 +64,10 @@ class PrestamoViewSet(viewsets.ModelViewSet):
         if not codigo:
             return Response({"detail": "Se requiere el campo 'codigo'."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Buscar por token primero (el escáner lee la cadena hex sin guiones),
-        # con fallback al código legible.
         herramienta = _buscar_herramienta_por_valor(codigo)
         if herramienta is None:
             return Response(
-                {"detail": "No se encontró ninguna herramienta con ese código o token."},
+                {"detail": "No se encontró ninguna herramienta con ese código."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 

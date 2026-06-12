@@ -31,29 +31,13 @@ class HerramientaViewSet(viewsets.ModelViewSet):
             qs = qs.filter(estado=estado)
         return qs
 
-    @action(detail=False, methods=["get"], url_path="por_token")
-    def por_token(self, request):
-        """Busca una herramienta por su token secreto. Solo para uso interno del admin."""
-        token = request.query_params.get("token", "").strip()
-        if not token:
-            from rest_framework.response import Response
-            from rest_framework import status as drf_status
-            return Response({"detail": "Se requiere el parámetro 'token'."}, status=drf_status.HTTP_400_BAD_REQUEST)
-        try:
-            herramienta = Herramienta.objects.get(token=token)
-        except (Herramienta.DoesNotExist, Exception):
-            from rest_framework.response import Response
-            from rest_framework import status as drf_status
-            return Response({"detail": "No se encontró ninguna herramienta con ese token."}, status=drf_status.HTTP_404_NOT_FOUND)
-        return Response(HerramientaSerializer(herramienta).data)
-
     @action(detail=True, methods=["get"])
     def barcode(self, request, pk=None):
         herramienta = self.get_object()
 
-        # --- Código de barras Code128 con el token secreto (sin mostrar texto) ---
+        # --- Código de barras Code128 con el ID de la herramienta ---
         Code128 = barcode.get_barcode_class("code128")
-        bc = Code128(str(herramienta.token).replace("-", ""), writer=ImageWriter())
+        bc = Code128(str(herramienta.id), writer=ImageWriter())
         bc_buffer = io.BytesIO()
         bc.write(bc_buffer, options={"write_text": False})
         bc_buffer.seek(0)
