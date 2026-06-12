@@ -117,7 +117,7 @@ class PrestamoAdmin(admin.ModelAdmin):
             "description": "Escanea el código de barras de cada artículo y presiona Enter para agregarlo.",
         }),
         ("Solicitantes", {
-            "fields": ("solicitantes",),
+            "fields": ("responsable", "solicitantes",),
         }),
         ("Detalles del préstamo", {
             "fields": (
